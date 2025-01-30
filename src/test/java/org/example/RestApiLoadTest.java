@@ -15,23 +15,33 @@ public class RestApiLoadTest extends Simulation {
             .acceptHeader("application/json")
             .contentTypeHeader("application/json");
 
-    // Define a Scenario
-    private final ScenarioBuilder scn = scenario("Bike Rental Command API Load Test")
+    // Define Scenarios
+    private final ScenarioBuilder rampUpScenario = scenario("Bike Rental Ramp Up Test")
             .exec(
-                http("Post Request")
+                http("Post Request - Ramp Up")
                     .post("/bikes?bikeType=city&location=BITS") 
                     .check(status().is(200))
             );
-           // .pause(Duration.ofSeconds(1)); // Simulates a user delay
+
+    private final ScenarioBuilder constantLoadScenario = scenario("Bike Rental Constant Load Test")
+            .exec(
+                http("Post Request - Constant Load")
+                    .post("/bikes?bikeType=city&location=BITS")
+                    .check(status().is(200))
+            )
+            .pause(Duration.ofSeconds(1)); // Add pause to simulate real user behavior
 
     // Load testing setup
     {
         setUp(
-            scn.injectOpen(
+            rampUpScenario.injectOpen(
                 rampUsers(20).during(10),   // Ramp up to 20 users in 10 seconds
                 rampUsers(30).during(60),   // Ramp up to 50 total in 1 minute
                 rampUsers(50).during(30),   // Ramp up to 100 total in 30 seconds
                 nothingFor(120)            // Maintain load for 2 minutes
+            ),
+            constantLoadScenario.injectClosed(
+                constantConcurrentUsers(50).during(60)
             )
         ).protocols(httpProtocol);
     }
